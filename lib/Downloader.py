@@ -43,28 +43,24 @@ class Downloader:
 
         return stream_url
 
-    def stream_download(self, stream_url, title):
+    def stream_download(self, stream_url, dest):
         stream = requests.get(stream_url)
 
-        os.makedirs('dls', exist_ok=True)
-        filepath = os.path.join('dls', f"{title}.mp3")
-
-        with open(filepath, 'wb') as output:
+        with open(dest, 'wb') as output:
             output.write(stream.content)
-            print(f"{title}.mp3, size: {round(os.stat(filepath).st_size / (1024*1024), 2)} mb.")
+            print(f"{dest}, size: {round(os.stat(dest).st_size / (1024*1024), 2)} mb.")
 
-        return stream_url, filepath
+        return stream_url
 
-    def add_metadata(self, track, filepath):
+    def add_metadata(self, track, dest):
         # get cover img, save to 'imgpath'
         cover_img = requests.get(track.artwork_url).content
-        os.makedirs('dls', exist_ok=True)
-        imgpath = os.path.join('dls', f"coverart.jpg")
+        imgpath = "coverart.jpg"
         with open(imgpath, 'wb') as img:
             img.write(cover_img)
         
         # add title and artist
-        audio_ez = mutagen.File(filepath, easy = True)
+        audio_ez = mutagen.File(dest, easy = True)
 
         if audio_ez.tags is None:
             audio_ez.add_tags()
@@ -74,7 +70,7 @@ class Downloader:
 
         # add cover art - can't use easyID3
 
-        audio = mutagen.File(filepath)
+        audio = mutagen.File(dest)
         with open(imgpath, 'rb') as coverart:
             audio['APIC'] = APIC(
                 encoding = 3,
