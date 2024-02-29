@@ -38,6 +38,3 @@ if __name__ == "__main__":
 		if args.nm == False:
 			title, artist = downloader.add_metadata(res, dest)
 			print(f"metadata: {title}, {artist}.")
-
-# os.makedirs('dls', exist_ok=True)
-# filepath = os.path.join('dls', f"{title}.mp3")
