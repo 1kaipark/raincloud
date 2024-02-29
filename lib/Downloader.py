@@ -1,4 +1,3 @@
-from soundcloud import SoundCloud
 import requests
 
 import os
@@ -8,43 +7,55 @@ import mutagen
 
 class Downloader:
     def __init__(self, client_id):
-        self.client = SoundCloud(client_id)
+        self.client_id = client_id
+        self.resolve_url = "https://api-v2.soundcloud.com/resolve"
+        self.default_headers = {
+            "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0"
+        }
+
 
     def get_resolved(self, track_url):
-        res = self.client.resolve(track_url)
-        try:
-            if res.streamable:
-                return res
-            else:
-                return "weird error bro rip"
-        except AttributeError:
-            print("playlist or album detected...")
-            return res
+        params = {
+            "client_id" : self.client_id,
+            "url" : track_url
+        }
+
+        response = requests.get(self.resolve_url, params = params, headers = self.default_headers)
+        return response.json()
         
-    def get_streaming_url(self, track):
+    def get_streaming_url(self, res):
         has_prog = False
-
-        for tr in track.media.transcodings:
-            if tr.format.protocol == 'progressive':
-                prog_url = tr.url
+        for tr in res['media']['transcodings']:
+            if tr['format']['protocol'] == 'progressive':
+                prog_url = tr['url']
                 has_prog = True
-                break
-        if not has_prog:
+        if has_prog == False:
             print("no progressive streaming found -- download likely broken. will try anyways")
-            hls_url = tr.url
+            hls_url = tr['url']   
 
-        headers = self.client.get_default_headers()
+
         if has_prog:
-            json = requests.get(prog_url, params={"client_id": self.client.client_id}, headers=headers)
-            stream_url = json.json()["url"]
+            result = requests.get(
+                prog_url,
+                params = {
+                    "client_id" : self.client_id
+                },
+                headers = self.default_headers
+            )
+            stream_url = result.json()['url']
         else:
-            json = requests.get(hls_url, params={"client_id": self.client.client_id}, headers=headers)
-            stream_url = json.json()["url"]
-
+            result = requests.get(
+                hls_url,
+                params = {
+                    "client_id" : client_id
+                },
+                headers = self.default_headers
+            )
+            stream_url = result.json()['url']
         return stream_url
 
     def stream_download(self, stream_url, dest):
-        stream = requests.get(stream_url)
+        stream = requests.get(stream_url, stream = True)
 
         with open(dest, 'wb') as output:
             output.write(stream.content)
@@ -52,9 +63,9 @@ class Downloader:
 
         return stream_url
 
-    def add_metadata(self, track, dest):
+    def add_metadata(self, res, dest):
         # get cover img, save to 'imgpath'
-        cover_img = requests.get(track.artwork_url).content
+        cover_img = requests.get(res['artwork_url']).content
         imgpath = "coverart.jpg"
         with open(imgpath, 'wb') as img:
             img.write(cover_img)
@@ -64,8 +75,8 @@ class Downloader:
 
         if audio_ez.tags is None:
             audio_ez.add_tags()
-        audio_ez['title'] = track.title
-        audio_ez['artist'] = track.user.username
+        audio_ez['title'] = res['title']
+        audio_ez['artist'] = res['user']['username']
         audio_ez.save()
 
         # add cover art - can't use easyID3
@@ -84,13 +95,19 @@ class Downloader:
         os.remove(imgpath)
         return audio_ez['title'], audio_ez['artist']
 
-    def playlist_to_tracks(self, track):
+    def playlist_to_tracks(self, res):
         track_urls = []
         print("gathering tracks from set...")
-        for t in track.tracks:
+        for t in res['tracks']:
             try:
-                track_urls.append(t.permalink_url)
-            except AttributeError:
-                track_urls.append(self.client.get_track(t.id).permalink_url)
+                track_urls.append(t['permalink_url'])
+            except KeyError:
+                track_urls.append(
+                    requests.get(
+                        f"https://api-v2.soundcloud.com/tracks/{t['id']}", 
+                        params = {"client_id": self.client_id}, 
+                        headers = self.default_headers
+                        ).json()['permalink_url']
+                    )
         print(f"{len(track_urls)} tracks found.")
         return track_urls
