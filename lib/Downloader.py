@@ -47,7 +47,7 @@ class Downloader:
             result = requests.get(
                 hls_url,
                 params = {
-                    "client_id" : client_id
+                    "client_id" : self.client_id
                 },
                 headers = self.default_headers
             )
