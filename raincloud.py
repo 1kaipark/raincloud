@@ -6,6 +6,8 @@ client_id_filepath = os.path.join('lib', 'client_id.txt')
 with open(client_id_filepath, 'r') as client_id_txt:
 	client_id = client_id_txt.read().strip()
 
+assert(client_id != "PASTE SOUNDCLOUD CLIENT ID (AND NOTHING ELSE) HERE."), "brother please add your client ID to client_id.txt or use the command line argument"
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description = "simple soundcloud downloader")
 	parser.add_argument('sc_url', type = str, help = "soundcloud URL")
