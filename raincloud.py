@@ -22,15 +22,15 @@ if __name__ == "__main__":
 	res_0 = downloader.get_resolved(args.sc_url)
 
 	urls = []
-	if res_0.kind == 'track':
-	    urls.append(res_0.permalink_url)
+	if res_0['kind'] == 'track':
+	    urls.append(res_0['permalink_url'])
 	else:
 	    urls = downloader.playlist_to_tracks(res_0)
 
 	for track_url in urls:
 		res = downloader.get_resolved(track_url)
 		stream_url = downloader.get_streaming_url(res)
-		filename = f"{res.user.username} - {res.title}" if args.a else res.title
+		filename = f"{res['user']['username']} - {res['title']}" if args.a else res['title']
 
 		dest = os.path.join('dls', f"{filename}.mp3")
 		downloader.stream_download(stream_url, dest)
