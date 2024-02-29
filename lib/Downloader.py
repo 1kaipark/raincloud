@@ -10,7 +10,7 @@ class Downloader:
         self.client_id = client_id
         self.resolve_url = "https://api-v2.soundcloud.com/resolve"
         self.default_headers = {
-            "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0"
+            "User-Agent" : "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
         }
 
 
