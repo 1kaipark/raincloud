@@ -15,6 +15,8 @@ if __name__ == "__main__":
 
 	args = parser.parse_args()
 
+	os.makedirs('dls', exist_ok = True)
+
 	downloader = Downloader(args.cid)
 
 	res_0 = downloader.get_resolved(args.sc_url)
@@ -29,8 +31,13 @@ if __name__ == "__main__":
 		res = downloader.get_resolved(track_url)
 		stream_url = downloader.get_streaming_url(res)
 		filename = f"{res.user.username} - {res.title}" if args.a else res.title
-		_, filepath = downloader.stream_download(stream_url, filename)
+
+		dest = os.path.join('dls', f"{filename}.mp3")
+		downloader.stream_download(stream_url, dest)
 
 		if args.nm == False:
-			title, artist = downloader.add_metadata(res, filepath)
+			title, artist = downloader.add_metadata(res, dest)
 			print(f"metadata: {title}, {artist}.")
+
+# os.makedirs('dls', exist_ok=True)
+# filepath = os.path.join('dls', f"{title}.mp3")
