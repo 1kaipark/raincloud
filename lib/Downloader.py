@@ -12,10 +12,14 @@ class Downloader:
 
     def get_resolved(self, track_url):
         res = self.client.resolve(track_url)
-        if res.streamable:
+        try:
+            if res.streamable:
+                return res
+            else:
+                return "weird error bro rip"
+        except AttributeError:
+            print("playlist or album detected...")
             return res
-        else:
-            return "weird error bro rip"
         
     def get_streaming_url(self, track):
         has_prog = False
@@ -84,14 +88,13 @@ class Downloader:
         os.remove(imgpath)
         return audio_ez['title'], audio_ez['artist']
 
-
-########################################################################
-
-
-# client_id = open("client_id.txt", "r").read()
-# downloader = Downloader(client_id)
-# track_url = input("paste pure SC link here (everything before the '?'): ")
-# res = downloader.get_resolved(track_url)
-
-# _, filepath = downloader.stream_download(downloader.get_streaming_url(res), res.title)
-# downloader.add_metadata(res, filepath)
+    def playlist_to_tracks(self, track):
+        track_urls = []
+        print("gathering tracks from set...")
+        for t in track.tracks:
+            try:
+                track_urls.append(t.permalink_url)
+            except AttributeError:
+                track_urls.append(self.client.get_track(t.id).permalink_url)
+        print(f"{len(track_urls)} tracks found.")
+        return track_urls
