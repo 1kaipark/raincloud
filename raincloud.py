@@ -19,29 +19,39 @@ from io import BytesIO
 
 from bs4 import BeautifulSoup
 
+
 def scrape_client_id(src_url: str) -> str:
     """Attempts to pull client_id from soundcloud URL using BeautifulSoup. Method adapted from https://github.com/3jackdaws/soundcloud-lib/tree/master"""
     html_text: str = requests.get(src_url).text
-    soup = BeautifulSoup(html_text, 'html.parser')
+    soup = BeautifulSoup(html_text, "html.parser")
 
-    scripts = soup.findAll('script', attrs={'src': True})
+    scripts = soup.findAll("script", attrs={"src": True})
     parsed_cids: list[str] = []
     for script in tqdm(scripts, desc="Searching for client_id..."):
-        script_text: str = requests.get(script['src']).text
-        if 'client_id' in script_text:
-            parsed: str = re.findall(r'client_id=([a-zA-Z0-9]+)', script_text)
+        script_text: str = requests.get(script["src"]).text
+        if "client_id" in script_text:
+            parsed: str = re.findall(r"client_id=([a-zA-Z0-9]+)", script_text)
             if parsed:
                 parsed_cids.append(parsed[0])
 
     return sorted(parsed_cids, key=lambda v: len(v))[-1]
 
+
 class SCClientIDError(Exception):
     """For error handling"""
+
+    pass
+
+
+class TrackSetMismatchError(Exception):
+    """Also for error handling"""
+
     pass
 
 
 class SCBase:
     """The base class for SC tracks, playlists. Attribute is resolved url, arguments client ID and URL. There's like no reason for a user to import this tbh it's only for inheritance"""
+
     def __init__(self, client_id: str, sc_url: str):
         self.client_id = client_id
 
@@ -98,8 +108,14 @@ class SCTrack(SCBase):
     ----
     I'm ngl cbf to write the rest of the docstring ima do this later
     """
+
     def __init__(self, client_id: str, sc_url: str):
         super().__init__(client_id, sc_url)
+
+        if "/sets/" in sc_url and 'in=' not in sc_url:
+            raise TrackSetMismatchError(
+                "URL provided is detected as a set. Please use SCSet instead."
+            )
 
     @property
     def stream_url(self) -> str:
@@ -258,10 +274,9 @@ class SCTrack(SCBase):
             audio_ez.save(buffer)
         buffer.seek(0)
         return buffer
-    
+
     def __repr__(self) -> str:
         return "SCTrack('{} - {}')".format(self.artist, self.title)
-        
 
 
 class SCSet(SCBase):
@@ -279,8 +294,13 @@ class SCSet(SCBase):
     ----
     tracks: a list of SCTrack objects corresponding to each track in the set.
     """
+
     def __init__(self, client_id: str, sc_url: str):
         super().__init__(client_id, sc_url)
+        if "/sets/" not in sc_url or 'in=' in sc_url:
+            raise TrackSetMismatchError(
+                "URL is likely a track. Please use SCTrack instead."
+            )
 
     @property
     def tracks(self) -> list[SCTrack]:
@@ -300,6 +320,6 @@ class SCSet(SCBase):
         for url in track_urls:
             l.append(SCTrack(self.client_id, url))
         return l
-    
+
     def __repr__(self) -> str:
         return "SCSet({} Tracks)".format(len(self.tracks))
