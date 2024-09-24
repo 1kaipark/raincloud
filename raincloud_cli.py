@@ -10,6 +10,11 @@ assert (
     client_id != "PASTE SOUNDCLOUD CLIENT ID (AND NOTHING ELSE) HERE."
 ), "brother please add your client ID to client_id.txt or use the command line argument"
 
+def download_to_file(fp: str, track: SCTrack, nm: bool) -> None:
+    trackbytes = track.stream_download(nm)
+    with open(fp, 'w+b') as h:
+        h.write(trackbytes.getvalue())
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="simple soundcloud downloader")
     parser.add_argument("sc_url", type=str, help="soundcloud URL")
@@ -35,7 +40,7 @@ if __name__ == "__main__":
         try:
             sc = SCTrack(client_id, args.sc_url)
             stream_url = sc.stream_url
-            sc.stream_download("dls", not args.nm)
+            download_to_file(fp=f"dls/{sc.title}.mp3", track=sc, nm=not args.nm)
             download_completed = True
         except SCClientIDError as e:
             client_id = scrape_client_id(args.sc_url)
@@ -46,7 +51,7 @@ if __name__ == "__main__":
             if cont.lower() == "y":
                 set = SCSet(client_id, args.sc_url)
                 for track in set.tracks:
-                    track.stream_download("dls", not args.nm)
+                    download_to_file(fp=f"dls/{track.title}.mp3", track=track, nm=not args.nm)
             else:
                 ...
             download_completed = True

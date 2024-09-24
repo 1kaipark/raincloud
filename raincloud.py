@@ -14,6 +14,7 @@ import os
 import re
 from mutagen.id3 import APIC, ID3, TIT2, TPE1
 import mutagen
+from mutagen.mp3 import MP3
 from tqdm import tqdm
 from io import BytesIO
 
@@ -112,7 +113,7 @@ class SCTrack(SCBase):
     def __init__(self, client_id: str, sc_url: str):
         super().__init__(client_id, sc_url)
 
-        if "/sets/" in sc_url and 'in=' not in sc_url:
+        if "/sets/" in sc_url and "in=" not in sc_url:
             raise TrackSetMismatchError(
                 "URL provided is detected as a set. Please use SCSet instead."
             )
@@ -155,69 +156,7 @@ class SCTrack(SCBase):
     def progressive_streaming(self) -> bool:
         return not "playlist" in self.stream_url  # 'playlist' in M3U stream URLs
 
-    def stream_download(self, dst_dir: str, metadata=True):
-        filename = self.title + ".mp3"  # title of track
-        dst = os.path.join(dst_dir, filename)  # output file
-        response = requests.get(self.stream_url, stream=True)
-
-        if self.progressive_streaming:
-            total_size = int(response.headers.get("content-length", 0))
-            if response.status_code == 200:  # if it works...
-                with open(dst, "wb") as output:
-                    # cooler progress bar
-                    for chunk in tqdm(
-                        response.iter_content(chunk_size=8192),
-                        total=total_size // 8192,
-                        unit="chunk",
-                        unit_scale=True,
-                        desc="Downloading Progressive",
-                    ):
-                        if chunk:
-                            output.write(chunk)
-                print(
-                    f"{dst} downloaded, size: {round(os.stat(dst).st_size / (1024*1024), 2)} MB."
-                )
-
-        else:
-            print("HLS streaming, warning SLOW download")
-            m3u_playlist = response.content.decode("utf-8")  # m3u8 file to string
-            m3u_urls = re.findall(
-                re.compile(r"http.*"), m3u_playlist
-            )  # get the streaming links as a list
-
-            # TODO: parallel processing possible?
-            with open(dst, "wb") as output:
-                # download sequentially from m3u url, TQDM used for progress bar
-                for i, url in enumerate(
-                    tqdm(m3u_urls, desc="Downloading HLS", unit="chunk")
-                ):
-                    response = requests.get(url, stream=True)
-                    for chunk in response.iter_content(chunk_size=8192):
-                        output.write(chunk)
-
-        if metadata:
-            cover_img = requests.get(self.artwork_url).content
-
-            # Add title and artist
-            # add title and artist
-            audio_ez = mutagen.File(dst, easy=True)
-
-            if audio_ez.tags is None:
-                audio_ez.add_tags()
-            audio_ez["title"] = self.title
-            audio_ez["artist"] = self.artist
-            audio_ez.save()
-
-            # add cover art - can't use easyID3
-
-            audio = mutagen.File(dst)
-            audio["APIC"] = APIC(
-                encoding=3, mime="image/jpeg", type=3, desc="Cover", data=cover_img
-            )
-            audio.save()
-            return audio_ez["title"], audio_ez["artist"]
-
-    def stream_download_wb(self, metadata: bool = True) -> BytesIO:
+    def stream_download(self, metadata: bool = True) -> BytesIO:
         buffer: BytesIO = BytesIO()
         response = requests.get(self.stream_url, stream=True)
         if self.progressive_streaming:
@@ -258,9 +197,7 @@ class SCTrack(SCBase):
 
         # add metadata
         if metadata:
-            cover_img = requests.get(self.artwork_url).content
 
-            # Add title and artist
             # add title and artist
             audio_ez = mutagen.File(buffer, easy=True)
 
@@ -268,10 +205,26 @@ class SCTrack(SCBase):
                 audio_ez.add_tags()
             audio_ez["title"] = self.title
             audio_ez["artist"] = self.artist
-            # audio_ez["APIC"] = APIC(
-            #     encoding=3, mime="image/jpeg", type=3, desc="Cover", data=cover_img
-            # )
             audio_ez.save(buffer)
+            buffer.seek(0)
+            # Try to add cover art https://stackoverflow.com/questions/38510694/how-to-add-album-art-to-mp3-file-using-python-3
+            try:
+                cover_img = requests.get(self.artwork_url).content
+                audio = MP3(buffer, ID3=ID3)
+                audio.tags.add(
+                    APIC(
+                        encoding=3,  # utf-8
+                        mime="image/png",
+                        type=3,  # means cover image
+                        desc="Cover",
+                        data=cover_img,
+                    )
+                )
+
+            except requests.exceptions.MissingSchema:
+                cover_img = None
+                print("No cover image found")
+            
         buffer.seek(0)
         return buffer
 
@@ -297,7 +250,7 @@ class SCSet(SCBase):
 
     def __init__(self, client_id: str, sc_url: str):
         super().__init__(client_id, sc_url)
-        if "/sets/" not in sc_url or 'in=' in sc_url:
+        if "/sets/" not in sc_url or "in=" in sc_url:
             raise TrackSetMismatchError(
                 "URL is likely a track. Please use SCTrack instead."
             )
