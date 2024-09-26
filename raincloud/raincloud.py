@@ -10,45 +10,15 @@ raincloud v2 api, contains SCTrack and SCSet classes with:
 """
 
 import requests
-import os
 import re
-from mutagen.id3 import APIC, ID3, TIT2, TPE1
+from mutagen.id3 import APIC, ID3
 import mutagen
 from mutagen.mp3 import MP3
 from tqdm import tqdm
 from io import BytesIO
 
-from bs4 import BeautifulSoup
-
-
-def scrape_client_id(src_url: str) -> str:
-    """Attempts to pull client_id from soundcloud URL using BeautifulSoup. Method adapted from https://github.com/3jackdaws/soundcloud-lib/tree/master"""
-    html_text: str = requests.get(src_url).text
-    soup = BeautifulSoup(html_text, "html.parser")
-
-    scripts = soup.findAll("script", attrs={"src": True})
-    parsed_cids: list[str] = []
-    for script in tqdm(scripts, desc="Searching for client_id..."):
-        script_text: str = requests.get(script["src"]).text
-        if "client_id" in script_text:
-            parsed: str = re.findall(r"client_id=([a-zA-Z0-9]+)", script_text)
-            if parsed:
-                parsed_cids.append(parsed[0])
-
-    return sorted(parsed_cids, key=lambda v: len(v))[-1]
-
-
-class SCClientIDError(Exception):
-    """For error handling"""
-
-    pass
-
-
-class TrackSetMismatchError(Exception):
-    """Also for error handling"""
-
-    pass
-
+from .exceptions import SCClientIDError, TrackSetMismatchError
+from .shared import DownloadedTrack
 
 class SCBase:
     """The base class for SC tracks, playlists. Attribute is resolved url, arguments client ID and URL. There's like no reason for a user to import this tbh it's only for inheritance"""
@@ -100,6 +70,7 @@ class SCBase:
 
 class SCTrack(SCBase):
     """A single track and all of its information.
+
     Arguments
     ----
     client_id: a valid soundcloud client ID
@@ -107,7 +78,15 @@ class SCTrack(SCBase):
 
     Methods
     ----
-    I'm ngl cbf to write the rest of the docstring ima do this later
+    stream_download: returns downloaded file as bytes.
+
+    Attributes
+    ----
+    client_id: the soundcloud client ID used to instantiate
+    resolved: JSON data for the SC track. Contains important metadata such as title, artist, streaming
+    stream_url: the URL for streaming -- can be an MP3
+    progressive_streaming: true if progressive streaming is present, if HLS then false
+
     """
 
     def __init__(self, client_id: str, sc_url: str):
@@ -156,7 +135,7 @@ class SCTrack(SCBase):
     def progressive_streaming(self) -> bool:
         return not "playlist" in self.stream_url  # 'playlist' in M3U stream URLs
 
-    def stream_download(self, metadata: bool = True) -> BytesIO:
+    def stream_download(self, metadata: bool = True) -> "DownloadedTrack":
         buffer: BytesIO = BytesIO()
         response = requests.get(self.stream_url, stream=True)
         if self.progressive_streaming:
@@ -226,7 +205,7 @@ class SCTrack(SCBase):
                 print("No cover image found")
             
         buffer.seek(0)
-        return buffer
+        return DownloadedTrack.from_bytesio(buffer, f"{self.title}.mp3")
 
     def __repr__(self) -> str:
         return "SCTrack('{} - {}')".format(self.artist, self.title)
@@ -239,13 +218,10 @@ class SCSet(SCBase):
     client_id: a valid soundcloud client ID
     sc_url: the set URL
 
-    Methods
-    ----
-    I'm ngl cbf to write the rest of the docstring ima do this later
-
     Attributes
     ----
     tracks: a list of SCTrack objects corresponding to each track in the set.
+    Other SC Base attributes (client_id, artist, title, resolved)
     """
 
     def __init__(self, client_id: str, sc_url: str):

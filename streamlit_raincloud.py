@@ -9,5 +9,5 @@ if client_id:
     soundcloud_url = st.text_input(label='SC URL to download...')
     if soundcloud_url:
         t = SCTrack(client_id, soundcloud_url)
-        buffer = t.stream_download_wb()
-        st.download_button(label='Download', data=buffer.getvalue(), file_name=f'{t.title}.mp3')
+        dt = t.stream_download()
+        st.download_button(label='Download', data=dt.fileobj, file_name=f'{t.title}.mp3')

@@ -40,7 +40,8 @@ if __name__ == "__main__":
         try:
             sc = SCTrack(client_id, args.sc_url)
             stream_url = sc.stream_url
-            download_to_file(fp=f"dls/{sc.title}.mp3", track=sc, nm=not args.nm)
+            dt = sc.stream_download()
+            dt.write_to_file()
             download_completed = True
         except SCClientIDError as e:
             client_id = scrape_client_id(args.sc_url)
@@ -51,7 +52,8 @@ if __name__ == "__main__":
             if cont.lower() == "y":
                 set = SCSet(client_id, args.sc_url)
                 for track in set.tracks:
-                    download_to_file(fp=f"dls/{track.title}.mp3", track=track, nm=not args.nm)
+                    dt = track.stream_download()
+                    dt.write_to_file()
             else:
                 ...
             download_completed = True
