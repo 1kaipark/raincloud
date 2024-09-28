@@ -14,11 +14,13 @@ DownloadedTrack: a dataclass for storing bytes with filename, size, and a method
 import requests
 from bs4 import BeautifulSoup
 import re
-import tqdm
+from tqdm import tqdm
 
 from dataclasses import dataclass
 from io import BytesIO
 import os
+
+import requests
 
 def scrape_client_id(src_url: str) -> str:
     """Attempts to pull client_id from soundcloud URL using BeautifulSoup. Method adapted from https://github.com/3jackdaws/soundcloud-lib/tree/master"""
@@ -65,3 +67,18 @@ class DownloadedTrack:
 
     def __repr__(self) -> str:
         return "DownloadedTrack({}, {} mb)".format(self.filename, round(self.size, 2))
+
+
+def test_client_id(cid: str, testurl: str = 'https://soundcloud.com/soundcloud/upload-your-first-track') -> bool:
+    test_params: dict = {
+        'client_id': cid,
+        'url': testurl
+    } 
+    test_headers = {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"
+        }  # anything works rly idk
+
+    response = requests.get("https://api-v2.soundcloud.com/resolve", params=test_params, headers=test_headers)
+    return (response.status_code != 401)
+
+
