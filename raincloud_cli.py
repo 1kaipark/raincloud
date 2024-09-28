@@ -1,19 +1,17 @@
 import argparse
-from raincloud import SCTrack, SCSet, scrape_client_id, SCClientIDError, TrackSetMismatchError
+from raincloud import SCTrack, SCSet
+from raincloud.shared import test_client_id, scrape_client_id
+from raincloud.exceptions import TrackSetMismatchError
 import os
 
 client_id_filepath = "client_id.txt"
 with open(client_id_filepath, "r") as client_id_txt:
     client_id = client_id_txt.read().strip()
 
-assert (
-    client_id != "PASTE SOUNDCLOUD CLIENT ID (AND NOTHING ELSE) HERE."
-), "brother please add your client ID to client_id.txt or use the command line argument"
-
-def download_to_file(fp: str, track: SCTrack, nm: bool) -> None:
-    trackbytes = track.stream_download(nm)
-    with open(fp, 'w+b') as h:
-        h.write(trackbytes.getvalue())
+if not test_client_id(client_id):
+    client_id = scrape_client_id()
+    with open(client_id_filepath, 'w+') as h:
+        h.write(client_id)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="simple soundcloud downloader")
@@ -40,13 +38,10 @@ if __name__ == "__main__":
         try:
             sc = SCTrack(client_id, args.sc_url)
             stream_url = sc.stream_url
-            dt = sc.stream_download()
+            dt = sc.stream_download(metadata=(not args.nm))
             dt.write_to_file()
             download_completed = True
-        except SCClientIDError as e:
-            client_id = scrape_client_id(args.sc_url)
-            with open(client_id_filepath, "w+") as client_id_txt:
-                client_id_txt.write(client_id)
+
         except TrackSetMismatchError as e:
             cont = input("Playlist/set detected. Would you like to download all? (Y/n)")
             if cont.lower() == "y":
