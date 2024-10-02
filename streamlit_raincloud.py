@@ -1,7 +1,6 @@
 import streamlit as st
 from raincloud import SCTrack, SCSet
 from raincloud.shared import scrape_client_id, test_client_id
-from shortcuts.file_io import choose_directory
 import os
 
 st.header("RAINCLOUD")
