@@ -3,7 +3,7 @@ from raincloud.shared import scrape_client_id, test_client_id
 from raincloud.exceptions import TrackSetMismatchError
 
 from PySide6 import QtWidgets as qtw
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QPoint
 import PySide6.QtGui as qtg
 
 import pandas as pd
@@ -101,6 +101,8 @@ class SCBatchLoader(qtw.QWidget):
         self.tree.setHeaderLabels(["track", "stream_url"])
 
         self.tree.itemDoubleClicked.connect(self.tree_item_clicked)
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self.open_tree_cx_menu)
 
         self.download_button = qtw.QPushButton("download all tracks")
         self.player_button = qtw.QPushButton("open music player")
@@ -270,6 +272,29 @@ class SCBatchLoader(qtw.QWidget):
             self.cfg = settings_dialog.get_cfg()
             with open('cfg.json', 'w+') as h:
                 json.dump(self.cfg, h)
+
+    def open_tree_cx_menu(self, position: QPoint) -> None:
+        item = self.tree.itemAt(position)
+        if item is not None:
+            menu = qtw.QMenu()
+            delete_action = qtg.QAction("delete", self)
+            delete_action.triggered.connect(lambda _: self.delete_track(item))
+            menu.addAction(delete_action)
+
+            menu.exec(self.tree.viewport().mapToGlobal(position))
+
+    def delete_track(self, item: qtw.QTreeWidgetItem) -> None:
+        idx = item.data(0, Qt.UserRole)
+        del self.tracks[idx]
+        del self.urls[idx]
+        self.tree.takeTopLevelItem(self.tree.indexOfTopLevelItem(item))
+
+        # recalculate index
+        for i in range(self.tree.topLevelItemCount()):
+            self.tree.topLevelItem(i).setData(0, Qt.UserRole, i)
+        
+        self.track_counter -= 1
+
 
 
 if __name__ == "__main__":
