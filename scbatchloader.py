@@ -222,7 +222,6 @@ class SCBatchLoader(qtw.QWidget):
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
 
     def tree_item_clicked(self, item: qtw.QTreeWidgetItem, column: int) -> None:
-        """when u double click a tree item, should open pygame window"""
         idx = item.data(0, Qt.UserRole)
         try:
             from pyperclip import copy
@@ -256,6 +255,7 @@ class SCBatchLoader(qtw.QWidget):
                 self.tree.clear()
                 self.tracks = []
                 self.urls = []
+                self.track_counter = 0
             elif button == qtw.QMessageBox.StandardButton.No:
                 pass
         else:
