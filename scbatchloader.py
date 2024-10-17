@@ -11,6 +11,7 @@ import pandas as pd
 import sys
 import subprocess
 import json
+import os
 
 from typing import Any, Iterator, Generator
 
@@ -272,8 +273,9 @@ class SCBatchLoader(qtw.QWidget):
 
 
 if __name__ == "__main__":
-    with open('cfg.json', 'w+') as h:
-        json.dump(DEFAULT_CFG, h)
+    if not os.path.exists('cfg.json'):
+        with open('cfg.json', 'w+') as h:
+            json.dump(DEFAULT_CFG, h)
     app = qtw.QApplication(sys.argv)
     launcher = SCBatchLoader(cid)
     launcher.show()
