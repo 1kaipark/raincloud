@@ -26,7 +26,7 @@ DEFAULT_CFG: dict = {
 
 class SCASettingsDialog(qtw.QDialog):
     def __init__(self, parent: qtw.QWidget | None = None, cfg: dict = DEFAULT_CFG) -> None:
-        super().__init__()
+        super().__init__(parent)
         
         self.setFixedSize(QSize(300, 100))
 
@@ -66,7 +66,21 @@ class SCASettingsDialog(qtw.QDialog):
 
         return self.cfg
 
-        
+class ResolvedViewer(qtw.QDialog):
+    def __init__(self, parent: qtw.QWidget = None, text: str = None) -> None:
+        super().__init__(parent)
+        self.setModal(True)
+        self.text_view = qtw.QPlainTextEdit(text)
+        self.text_view.setReadOnly(True)
+        self.text_view.setMinimumSize(QSize(200, 200))
+        self.close_button = qtw.QPushButton("close")
+        self.close_button.clicked.connect(self.accept)
+
+        lt = qtw.QVBoxLayout()
+        lt.addWidget(self.text_view)
+        lt.addWidget(self.close_button)
+
+        self.setLayout(lt)
 
 class SCBatchLoader(qtw.QWidget):
     def __init__(self, client_id: str, cfg: dict = DEFAULT_CFG) -> None:
@@ -112,8 +126,8 @@ class SCBatchLoader(qtw.QWidget):
 
 
         btns_lt = qtw.QHBoxLayout()
-        btns_lt.addWidget(self.download_button)
         btns_lt.addWidget(self.player_button)
+        btns_lt.addWidget(self.download_button)
 
         main_lt = qtw.QVBoxLayout()
         main_lt.addLayout(url_entry_lt)
@@ -146,9 +160,7 @@ class SCBatchLoader(qtw.QWidget):
         self.setFixedSize(self.sizeHint())
 
     def add_url(self) -> None:
-        print("Add URL button clicked")
         url: str = self.url_entry.text()
-        print(url)
         try:
             sc_track = SCTrack(self.client_id, url)
             if sc_track.resolved['permalink_url'] not in [t.resolved['permalink_url'] for t in self.tracks]:
@@ -184,10 +196,8 @@ class SCBatchLoader(qtw.QWidget):
         self.url_entry.setText("")
 
     def download_all_tracks(self) -> bool:
-        print("downloading all tracks")
         dst: str = qtw.QFileDialog.getExistingDirectory()
         dst = str(dst) # ???
-        print(dst)
         if len(dst) > 0:
             if len(self.tracks) == 0:
                 info = qtw.QMessageBox(self)
@@ -217,26 +227,30 @@ class SCBatchLoader(qtw.QWidget):
             return False
 
     def open_player(self) -> None:
-        print("opening player")
-        cmd = [self.cfg['player_cmd']]
-        cmd.extend(self.urls)
-        print(cmd)
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+        try:
+            cmd = [self.cfg['player_cmd']]
+            cmd.extend(self.urls)
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+        except Exception as e:
+            errormsg = qtw.QMessageBox(self)
+            errormsg.setText(str(e))
+            errormsg.exec()
 
     def tree_item_clicked(self, item: qtw.QTreeWidgetItem, column: int) -> None:
         idx = item.data(0, Qt.UserRole)
         try:
-            from pyperclip import copy
-            copy(self.urls[idx])
-            success = qtw.QMessageBox(self)
-            success.setWindowTitle("copied")
-            success.setText("copied {} to clipboard".format(self.urls[idx]))
-            success.exec()
-        except ImportError as e:
-            error = qtw.QMessageBox(self)
-            error.setWindowTitle("pyperclip not found")
-            error.setText("ermm guys this is awkward")
-            error.exec()
+            ResolvedViewer(self, str(self.tracks[idx].resolved)).exec()
+        #     from pyperclip import copy
+        #     copy(self.urls[idx])
+        #     success = qtw.QMessageBox(self)
+        #     success.setWindowTitle("copied")
+        #     success.setText("copied {} to clipboard".format(self.urls[idx]))
+        #     success.exec()
+        # except ImportError as e:
+        #     error = qtw.QMessageBox(self)
+        #     error.setWindowTitle("pyperclip not found")
+        #     error.setText("ermm guys this is awkward")
+        #     error.exec()
         except Exception as e:
             error = qtw.QMessageBox(self)
             error.setWindowTitle("error")
@@ -279,7 +293,12 @@ class SCBatchLoader(qtw.QWidget):
             menu = qtw.QMenu()
             delete_action = qtg.QAction("delete", self)
             delete_action.triggered.connect(lambda _: self.delete_track(item))
+
+            copy_action = qtg.QAction("copy stream URL", self)
+            copy_action.triggered.connect(lambda _: self.copy_stream_url(item))
+
             menu.addAction(delete_action)
+            menu.addAction(copy_action)
 
             menu.exec(self.tree.viewport().mapToGlobal(position))
 
@@ -294,6 +313,26 @@ class SCBatchLoader(qtw.QWidget):
             self.tree.topLevelItem(i).setData(0, Qt.UserRole, i)
         
         self.track_counter -= 1
+
+    def copy_stream_url(self, item: qtw.QTreeWidgetItem) -> None:
+        idx = item.data(0, Qt.UserRole)
+        try:
+            from pyperclip import copy
+            copy(self.urls[idx])
+            success = qtw.QMessageBox(self)
+            success.setWindowTitle("copied")
+            success.setText("copied {} to clipboard".format(self.urls[idx]))
+            success.exec()
+        except ImportError as e:
+            error = qtw.QMessageBox(self)
+            error.setWindowTitle("pyperclip not found")
+            error.setText("ermm guys this is awkward")
+            error.exec()
+        except Exception as e:
+            error = qtw.QMessageBox(self)
+            error.setWindowTitle("error")
+            error.setText(str(e))
+            error.exec()
 
 
 
