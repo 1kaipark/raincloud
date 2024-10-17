@@ -150,9 +150,17 @@ class SCBatchLoader(qtw.QWidget):
         settings_action.triggered.connect(self.open_settings)
         file_menu.addAction(settings_action)
 
+        refresh_streams_action = qtg.QAction("refresh streams", self)
+        refresh_streams_action.triggered.connect(self.refresh_streams)
+        file_menu.addAction(refresh_streams_action)
+
+        file_menu.addSeparator()
+
         exit_action = qtg.QAction("exit", self)
         exit_action.triggered.connect(qtw.QApplication.instance().quit)
         file_menu.addAction(exit_action)
+
+
 
         menubar.addMenu(file_menu)
         main_lt.setMenuBar(menubar)
@@ -288,6 +296,9 @@ class SCBatchLoader(qtw.QWidget):
                 json.dump(self.cfg, h)
 
     def open_tree_cx_menu(self, position: QPoint) -> None:
+
+        # Should add option to copy permalink url, and download individual track.
+        
         item = self.tree.itemAt(position)
         if item is not None:
             menu = qtw.QMenu()
@@ -297,8 +308,16 @@ class SCBatchLoader(qtw.QWidget):
             copy_action = qtg.QAction("copy stream URL", self)
             copy_action.triggered.connect(lambda _: self.copy_stream_url(item))
 
+            copy_permalink_action = qtg.QAction("copy permalink URL", self)
+            copy_permalink_action.triggered.connect(lambda _: self.copy_permalink_url(item))
+
+            download_action = qtg.QAction("download single", self)
+            download_action.triggered.connect(lambda _: self.download_single(item))
+
             menu.addAction(delete_action)
             menu.addAction(copy_action)
+            menu.addAction(copy_permalink_action)
+            menu.addAction(download_action)
 
             menu.exec(self.tree.viewport().mapToGlobal(position))
 
@@ -333,6 +352,54 @@ class SCBatchLoader(qtw.QWidget):
             error.setWindowTitle("error")
             error.setText(str(e))
             error.exec()
+
+    def copy_permalink_url(self, item: qtw.QTreeWidgetItem) -> None:
+        idx = item.data(0, Qt.UserRole)
+        try:
+            from pyperclip import copy
+            permalink = self.tracks[idx].resolved['permalink_url']
+            copy(permalink)
+            success = qtw.QMessageBox(self)
+            success.setWindowTitle("copied")
+            success.setText("copied {} to clipboard".format(permalink))
+            success.exec()
+        except ImportError as e:
+            error = qtw.QMessageBox(self)
+            error.setWindowTitle("pyperclip not found")
+            error.setText("ermm guys this is awkward")
+            error.exec()
+        except Exception as e:
+            error = qtw.QMessageBox(self)
+            error.setWindowTitle("error")
+            error.setText(str(e))
+            error.exec()
+
+
+    def download_single(self, item: qtw.QTreeWidgetItem) -> None:
+        idx = item.data(0, Qt.UserRole)
+
+        sc_track = self.tracks[idx]
+        dst: str = qtw.QFileDialog.getExistingDirectory()
+        dst = str(dst) # ???
+
+        try:
+            dl = sc_track.stream_download(self.cfg['metadata'])
+            dl.write_to_file(dst)
+            success = qtw.QMessageBox(self)
+            success.setWindowTitle("downloaded track")
+            success.setText("{} saved to {}".format(sc_track.title, dst))
+            success.exec()
+        except Exception as e:
+            errormsg = qtw.QMessageBox(self)
+            errormsg.setText(str(e))
+            errormsg.exec()
+
+    def refresh_streams(self) -> None:
+        self.urls = [t.stream_url for t in self.tracks]
+        info = qtw.QMessageBox(self)
+        info.setWindowTitle("streams refreshed")
+        info.setText("streaming URLs should be updated.") # How to refresh the tree view as well iteratively
+        info.exec()
 
 
 
