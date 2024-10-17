@@ -1,3 +1,4 @@
 mutagen
 tqdm
 bs4
+PySide6

@@ -205,7 +205,7 @@ class SCTrack(SCBase):
                 print("No cover image found")
             
         buffer.seek(0)
-        return DownloadedTrack.from_bytesio(buffer, f"{self.title}.mp3")
+        return DownloadedTrack.from_bytesio(buffer, f"{self.resolved['permalink_url'].split('/')[-1]}.mp3") # switching to this instead of title in case of identical titles (this can be identical too but rare)
 
     def __repr__(self) -> str:
         return "SCTrack('{} - {}')".format(self.artist, self.title)
