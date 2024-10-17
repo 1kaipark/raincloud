@@ -177,8 +177,8 @@ class SCBatchLoader(qtw.QWidget):
             info.setWindowTitle("parsing SCSet")
             info.setText("this may take a while")
             info.exec()
-            set = SCSet(self.client_id, url)
-            for sc_track in set.tracks:
+            tracks = SCSet(self.client_id, url).tracks
+            for sc_track in tracks:
                 if sc_track.resolved['permalink_url'] not in [t.resolved['permalink_url'] for t in self.tracks]:
                     item = qtw.QTreeWidgetItem([sc_track.title, sc_track.stream_url])
                     item.setData(0, Qt.UserRole, self.track_counter)
