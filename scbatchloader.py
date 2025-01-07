@@ -15,9 +15,18 @@ import os
 
 from typing import Any, Iterator, Generator
 
-cid = open('client_id.txt').read()
-if not test_client_id(cid):
+
+if os.path.exists('client_id.txt'):
+    cid = open('client_id.txt').read()
+    if not test_client_id(cid):
+        cid = scrape_client_id()
+else:
     cid = scrape_client_id()
+
+with open('client_id.txt', 'w+') as h:
+    h.write(cid)
+
+
 
 DEFAULT_CFG: dict = {
     'metadata': True,
@@ -140,9 +149,9 @@ class SCBatchLoader(qtw.QWidget):
         menubar = qtw.QMenuBar(self)
         file_menu = qtw.QMenu("file", self)
 
-        create_csv_action = qtg.QAction("delete all tracks", self)
-        create_csv_action.triggered.connect(self.delete_all_tracks)
-        file_menu.addAction(create_csv_action)
+        delete_all_action = qtg.QAction("delete all tracks", self)
+        delete_all_action.triggered.connect(self.delete_all_tracks)
+        file_menu.addAction(delete_all_action)
 
         file_menu.addSeparator()
 
@@ -160,7 +169,10 @@ class SCBatchLoader(qtw.QWidget):
         exit_action.triggered.connect(qtw.QApplication.instance().quit)
         file_menu.addAction(exit_action)
 
-
+        file_menu.addSeparator()
+        about_action = qtg.QAction("what is this?", self)
+        about_action.triggered.connect(self.show_about)
+        file_menu.addAction(about_action)
 
         menubar.addMenu(file_menu)
         main_lt.setMenuBar(menubar)
@@ -399,6 +411,12 @@ class SCBatchLoader(qtw.QWidget):
         info = qtw.QMessageBox(self)
         info.setWindowTitle("streams refreshed")
         info.setText("streaming URLs should be updated.") # How to refresh the tree view as well iteratively
+        info.exec()
+
+    def show_about(self) -> None:
+        info = qtw.QMessageBox(self)
+        info.setWindowTitle("about")
+        info.setText("a simple Qt frontend for the raincloud SC api.")
         info.exec()
 
 
